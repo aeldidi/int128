@@ -78,15 +78,14 @@ void uint128_tests()
 	tmp = uint128_mul(tmp, UINT128_C(1783251994049));
 	tmp = uint128_mul(tmp, UINT128_C(84893729335057));
 
-	printf("our value = %llX%llX\n", b.high, b.low);
-	printf("correct   = %llX%llX\n", tmp.high, tmp.low);
+	// Sanity check: did this give us the right value?
+	assert(tmp.high == 0xf050fe938943acc4);
+	assert(tmp.low == 0x5f65568000000002);
+
+	printf("our value = %llx%llx\n", b.high, b.low);
+	printf("correct   = %llx%llx\n", tmp.high, tmp.low);
 
 	assert(uint128_eq(b, tmp));
-
-	// UINT128_MAX = 340282366920938463463374607431768211455
-
-	// 1e38 * 10 = 319435266158123073073250785136463577090
-	// This is after wraparound
 }
 
 int main()

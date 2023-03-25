@@ -1,6 +1,7 @@
 #ifndef INT128_H
 #define INT128_H
 #include <inttypes.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -319,32 +320,27 @@ static inline uint128 uint128_sub(uint128 lhs, uint128 rhs)
 static inline uint128 uint128_mul64(uint64_t lhs, uint64_t rhs)
 {
 	// Split the low 64 bits of lhs and rhs into its high and low 32 bits.
-	uint64_t left_lo32 = lhs & UINT32_C(~0);
+	uint64_t left_lo32 = lhs & UINT32_MAX;
 	uint64_t left_hi32 = lhs >> 32;
-	uint64_t right_lo32 = rhs & UINT32_C(~0);
+	uint64_t right_lo32 = rhs & UINT32_MAX;
 	uint64_t right_hi32 = rhs >> 32;
 
 	// Compute each component of the product as the sum of multiple 32 bit
 	// products.
-	uint64_t product[4] = {
-		left_lo32 * right_lo32,
-		left_lo32 * right_hi32,
-		left_hi32 * right_lo32,
-		left_hi32 * right_hi32,
-	};
+	uint64_t lo_lo = left_lo32 * right_lo32;
+	uint64_t lo_hi = left_lo32 * right_hi32;
+	uint64_t hi_lo = left_hi32 * right_lo32;
+	uint64_t hi_hi = left_hi32 * right_hi32;
 
 	uint64_t carry =
-		((product[0] >> 32) + // high bits of low x low
-		 (product[1] & UINT32_C(~0)) + // low bits of low x high
-		 (product[2] & UINT32_C(~0))) // low bits of high x low
-		>> 32; // we want the high bits of that sum
+		((lo_lo >> 32) + (lo_hi & UINT32_MAX) + (hi_lo & UINT32_MAX)) >>
+		32; // we want the high bits of that sum
 
 	// Assemble the final product from these components, adding the carry
-	// bits to the high 64 bits.
+	// to the high 64 bits.
 	return (uint128){
-		.low = product[0] + (product[1] << 32) + (product[2] << 32),
-		.high = product[3] + (product[1] >> 32) + (product[2] >> 32) +
-			carry,
+		.low = lo_lo + (lo_hi << 32) + (hi_lo << 32),
+		.high = hi_hi + (lo_hi >> 32) + (hi_lo >> 32) + carry,
 	};
 }
 
@@ -382,7 +378,14 @@ static inline int128 int128_mul64(int64_t lhs, int64_t rhs)
 // Returns lhs * rhs.
 static inline uint128 uint128_mul(uint128 lhs, uint128 rhs)
 {
+	// TODO: what do we do if the intermediate multiplications overflow?
 	uint128 result = uint128_mul64(lhs.low, rhs.low);
+	uint128 tmp = uint128_mul64(lhs.high, rhs.low);
+	assert(tmp.high == 0);
+
+	tmp = uint128_mul64(lhs.low, rhs.high);
+	assert(tmp.high == 0);
+
 	result.high += (lhs.high * rhs.low) + (lhs.low * rhs.high);
 	return result;
 }
