@@ -12,7 +12,7 @@
 #define UINT128_C(x) ((uint128){ .low = x })
 #define INT128_C(x)                                             \
 	((x < 0) ? (int128){ .low = x, .high = UINT64_C(~0) } : \
-		   (int128){ .low = x })
+			 (int128){ .low = x })
 
 struct int128 {
 	uint64_t low;
@@ -319,9 +319,9 @@ static inline uint128 uint128_sub(uint128 lhs, uint128 rhs)
 static inline uint128 uint128_mul64(uint64_t lhs, uint64_t rhs)
 {
 	// Split the low 64 bits of lhs and rhs into its high and low 32 bits.
-	uint64_t left_lo32 = lhs & UINT32_C(0xffffffff);
+	uint64_t left_lo32 = lhs & UINT32_C(~0);
 	uint64_t left_hi32 = lhs >> 32;
-	uint64_t right_lo32 = rhs & UINT32_C(0xffffffff);
+	uint64_t right_lo32 = rhs & UINT32_C(~0);
 	uint64_t right_hi32 = rhs >> 32;
 
 	// Compute each component of the product as the sum of multiple 32 bit
@@ -334,10 +334,10 @@ static inline uint128 uint128_mul64(uint64_t lhs, uint64_t rhs)
 	};
 
 	uint64_t carry =
-		(((product[0] >> 32) + // high bits of low x low
-		  (product[1] & UINT32_C(~0)) + // low bits of low x high
-		  (product[2] & UINT32_C(~0))) // low bits of high x low
-		 >> 32); // we want the high bits of that sum
+		((product[0] >> 32) + // high bits of low x low
+		 (product[1] & UINT32_C(~0)) + // low bits of low x high
+		 (product[2] & UINT32_C(~0))) // low bits of high x low
+		>> 32; // we want the high bits of that sum
 
 	// Assemble the final product from these components, adding the carry
 	// bits to the high 64 bits.
@@ -504,7 +504,7 @@ static inline int128 int128_div(int128 lhs, int128 rhs)
 	// TODO: negative demonimator
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
-	uint128 b = { .low = rhs.low, .high = rhs.low };
+	uint128 b = { .low = rhs.low, .high = rhs.high };
 	uint128 c = uint128_div(a, b);
 	int128 result = { .low = c.low, .high = c.high };
 
@@ -532,7 +532,7 @@ static inline int128 int128_mod(int128 lhs, int128 rhs)
 	// TODO: negative demonimator
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
-	uint128 b = { .low = rhs.low, .high = rhs.low };
+	uint128 b = { .low = rhs.low, .high = rhs.high };
 	uint128 c = uint128_mod(a, b);
 	int128 result = { .low = c.low, .high = c.high };
 

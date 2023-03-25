@@ -6,9 +6,18 @@
 
 void int128_tests()
 {
+	// Left Shift
+	int128 a = INT128_C(UINT64_C(1) << 63);
+	int128 b = int128_shiftl(a, 1);
+	assert(b.high == 1);
+
+	a = (int128){ .high = 1 };
+	b = int128_shiftr(a, 1);
+	assert(b.low == (UINT64_C(1) << 63));
+
 	// Addition Sanity Check
-	int128 a = INT128_C(UINT64_MAX);
-	int128 b = int128_add(a, INT128_C(1));
+	a = INT128_C(UINT64_MAX);
+	b = int128_add(a, INT128_C(1));
 	assert(int128_greater(b, a));
 	assert(int128_less(b, int128_add(a, INT128_C(2))));
 	assert(!int128_eq(b, a));
@@ -41,12 +50,47 @@ void int128_tests()
 	// Division Sanity Check
 	a = (int128){ .high = 200000000 };
 	b = int128_div(a, INT128_C(2));
-	printf("%" PRId64 "%.20" PRIu64 " / 2 = %" PRId64 "%.20" PRIu64 "\n",
-	       a.high, a.low, b.high, b.low);
-	assert(b.high == 100000000);
+	assert(int128_eq(b, (int128){ .high = 100000000 }));
+}
+
+void uint128_tests()
+{
+	// Multiplication wraparound check
+	// We will try to compute 1e38 * 10 and check if it wrapped around
+	uint128 a = UINT128_C(1);
+	for (int i = 0; i < 38; i += 1) {
+		uint128 tmp = uint128_mul(a, UINT128_C(10));
+		// This shouldn't overflow yet
+		assert(uint128_greater(tmp, a));
+		a = tmp;
+	}
+
+	// This will overflow
+	uint128 b = uint128_mul(a, UINT128_C(10));
+
+	// The result of the multiplication should be
+	// 319435266158123073073250785136463577090, which has a prime
+	// factorization of
+	// 2 * 5 * 7 * 1187 * 25394857 * 1783251994049 * 84893729335057, so we
+	// will represent it like that.
+
+	uint128 tmp = uint128_mul64(2 * 5 * 7 * 1187, 25394857);
+	tmp = uint128_mul(tmp, UINT128_C(1783251994049));
+	tmp = uint128_mul(tmp, UINT128_C(84893729335057));
+
+	printf("our value = %llX%llX\n", b.high, b.low);
+	printf("correct   = %llX%llX\n", tmp.high, tmp.low);
+
+	assert(uint128_eq(b, tmp));
+
+	// UINT128_MAX = 340282366920938463463374607431768211455
+
+	// 1e38 * 10 = 319435266158123073073250785136463577090
+	// This is after wraparound
 }
 
 int main()
 {
 	int128_tests();
+	uint128_tests();
 }
