@@ -13,7 +13,7 @@
 #define UINT128_C(x) ((uint128){ .low = x })
 #define INT128_C(x)                                             \
 	((x < 0) ? (int128){ .low = x, .high = UINT64_C(~0) } : \
-			 (int128){ .low = x })
+		   (int128){ .low = x })
 
 struct int128 {
 	uint64_t low;
@@ -319,6 +319,8 @@ static inline uint128 uint128_sub(uint128 lhs, uint128 rhs)
 // Multiply two unsigned 64 bit integers and get the 128 bit result.
 static inline uint128 uint128_mul64(uint64_t lhs, uint64_t rhs)
 {
+	// For a more detailed explanation of this algorithm, see uint128_mul.
+
 	// Split the low 64 bits of lhs and rhs into its high and low 32 bits.
 	uint64_t left_lo32 = lhs & UINT32_MAX;
 	uint64_t left_hi32 = lhs >> 32;
@@ -378,15 +380,44 @@ static inline int128 int128_mul64(int64_t lhs, int64_t rhs)
 // Returns lhs * rhs.
 static inline uint128 uint128_mul(uint128 lhs, uint128 rhs)
 {
-	// TODO: what do we do if the intermediate multiplications overflow?
-	uint128 result = uint128_mul64(lhs.low, rhs.low);
-	uint128 tmp = uint128_mul64(lhs.high, rhs.low);
-	assert(tmp.high == 0);
+	// We want to compute ab given two 128 bit integers a and b.
+	// Let x = 2^64, a = a1x + a2, b = b1x + b2, where a1 and a2 are the
+	// high and low bits of a respectively, and b1 and b2 are the high and
+	// low bits of b2 respectively.
 
-	tmp = uint128_mul64(lhs.low, rhs.high);
-	assert(tmp.high == 0);
+	// Then we compute the partial 64x64 products:
+	uint128 i = uint128_mul64(lhs.low, rhs.low); // a2b2
+	uint128 j = uint128_mul64(lhs.low, rhs.high); // a2b1
+	uint128 k = uint128_mul64(lhs.high, rhs.low); // a1b2
+	// uint128 l = uint128_mul64(lhs.high, rhs.high); // a1b1
 
-	result.high += (lhs.high * rhs.low) + (lhs.low * rhs.high);
+	// l would be necessary if we were to perform the full 256 bit product,
+	// but we're only interested in the 128 bit wrapped result.
+
+	// and combine them into the result like so:
+	//       i1 i2
+	//    j1 j2 00
+	//    k1 k2 00
+	// l1 l2 00 00 +
+	// -----------
+	// ...........
+
+	uint128 tmp = uint128_add( //
+		i, // i1 i2
+		(uint128){ .high = j.low } // j2 00
+	);
+
+	// We simply return the low bits of what would be a 256 bit result,
+	// since we only care about the lower bits.
+	uint128 result = uint128_add( //
+		tmp, //
+		(uint128){ .high = k.low } // k2 00
+	);
+
+	// We would also compute the carry if multiplying into 256 bits, so we
+	// could propagate it to the next additions.
+	// uint64_t carry = (tmp.low < lhs.low) + (result.low < lhs.low);
+
 	return result;
 }
 

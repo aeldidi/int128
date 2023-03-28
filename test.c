@@ -4,6 +4,16 @@
 
 #include "int128.h"
 
+// void int128_printhex(char *name, int128 x)
+// {
+// 	printf("%s = %016" PRIx64 " %016" PRIx64 "\n", name, x.high, x.low);
+// }
+//
+// void uint128_printhex(char *name, uint128 x)
+// {
+// 	printf("%s = %016" PRIx64 " %016" PRIx64 "\n", name, x.high, x.low);
+// }
+
 void int128_tests()
 {
 	// Left Shift
@@ -45,7 +55,14 @@ void int128_tests()
 	b = int128_mul(INT128_MAX, INT128_C(0));
 	assert(int128_eq(b, INT128_C(0)));
 
-	// TODO: does multiplication wrap on overflow?
+	// Multiplication wraparound check
+	// We will try to compute INT128_MAX * 10 and check if it wrapped
+	// around to -10.
+	b = int128_mul(INT128_MAX, INT128_C(10));
+	assert(int128_eq(b, INT128_C(-10)));
+
+	// Fun fact: INT128_MAX (170141183460469231731687303715884105727) is
+	// prime :)
 
 	// Division Sanity Check
 	a = (int128){ .high = 200000000 };
@@ -55,9 +72,15 @@ void int128_tests()
 
 void uint128_tests()
 {
+	// Multiplication Sanity Check
+	uint128 a = (uint128){ .high = 100000000 };
+	uint128 b = uint128_mul(a, UINT128_C(2));
+	assert(b.high == 200000000);
+	assert(b.low == 0);
+
 	// Multiplication wraparound check
 	// We will try to compute 1e38 * 10 and check if it wrapped around
-	uint128 a = UINT128_C(1);
+	a = UINT128_C(1);
 	for (int i = 0; i < 38; i += 1) {
 		uint128 tmp = uint128_mul(a, UINT128_C(10));
 		// This shouldn't overflow yet
@@ -66,30 +89,21 @@ void uint128_tests()
 	}
 
 	// This will overflow
-	uint128 b = uint128_mul(a, UINT128_C(10));
+	b = uint128_mul(a, UINT128_C(10));
 
-	// The result of the multiplication should be
-	// 319435266158123073073250785136463577090, which has a prime
-	// factorization of
-	// 2 * 5 * 7 * 1187 * 25394857 * 1783251994049 * 84893729335057, so we
-	// will represent it like that.
+	// The correct result after wrapping around is
+	// 319435266158123073073250785136463577090, which is represented in hex
+	// as
+	uint128 correct = (uint128){
+		.low = 0x5f65568000000000,
+		.high = 0xf050fe938943acc4,
+	};
 
-	uint128 tmp = uint128_mul64(2 * 5 * 7 * 1187, 25394857);
-	tmp = uint128_mul(tmp, UINT128_C(1783251994049));
-	tmp = uint128_mul(tmp, UINT128_C(84893729335057));
-
-	// Sanity check: did this give us the right value?
-	assert(tmp.high == 0xf050fe938943acc4);
-	assert(tmp.low == 0x5f65568000000002);
-
-	printf("our value = %llx%llx\n", b.high, b.low);
-	printf("correct   = %llx%llx\n", tmp.high, tmp.low);
-
-	assert(uint128_eq(b, tmp));
+	assert(uint128_eq(b, correct));
 }
 
 int main()
 {
-	int128_tests();
 	uint128_tests();
+	int128_tests();
 }
