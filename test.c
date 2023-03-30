@@ -85,6 +85,12 @@ void int128_tests()
 	a = (int128){ .high = 200000000 };
 	b = int128_div(a, INT128_C(2));
 	assert(int128_eq(b, (int128){ .high = 100000000 }));
+
+	// Modulo Sanity Check
+	// 85070591730234615865843651857942052863 % 1234567890 = 1122498603
+	a = int128_div(int128_sub(INT128_MAX, INT128_C(1)), INT128_C(2));
+	b = INT128_C(1234567890);
+	assert(int128_eq(int128_mod(a, b), INT128_C(1122498603)));
 }
 
 void uint128_tests()
