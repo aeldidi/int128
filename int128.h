@@ -1,7 +1,6 @@
 #ifndef INT128_H
 #define INT128_H
 #include <inttypes.h>
-#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -10,10 +9,10 @@
 #define INT128_MIN ((int128){ .low = 0, .high = UINT64_C(0x8000000000000000) })
 #define UINT128_MAX ((uint128){ .low = UINT64_MAX, .high = UINT64_MAX })
 
-#define UINT128_C(x) ((uint128){ .low = x })
-#define INT128_C(x)                                             \
-	((x < 0) ? (int128){ .low = x, .high = UINT64_C(~0) } : \
-		   (int128){ .low = x })
+#define UINT128_C(x) ((uint128){ .low = (x) })
+#define INT128_C(x)                                                 \
+	(((x) < 0) ? (int128){ .low = (x), .high = UINT64_C(~0) } : \
+		     (int128){ .low = (x) })
 
 struct int128 {
 	uint64_t low;
@@ -424,6 +423,14 @@ static inline uint128 uint128_mul(uint128 lhs, uint128 rhs)
 // Returns lhs * rhs.
 static inline int128 int128_mul(int128 lhs, int128 rhs)
 {
+	if (int128_eq(lhs, INT128_C(-1))) {
+		return int128_neg(rhs);
+	}
+
+	if (int128_eq(rhs, INT128_C(-1))) {
+		return int128_neg(lhs);
+	}
+
 	bool result_negative = false;
 	if (int128_less(lhs, INT128_C(0))) {
 		result_negative = !result_negative;
@@ -534,7 +541,10 @@ static inline int128 int128_div(int128 lhs, int128 rhs)
 		lhs = int128_neg(lhs);
 	}
 
-	// TODO: negative demonimator
+	if (int128_less(rhs, INT128_C(0))) {
+		result_negative = !result_negative;
+		rhs = int128_neg(rhs);
+	}
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
 	uint128 b = { .low = rhs.low, .high = rhs.high };
@@ -562,7 +572,10 @@ static inline int128 int128_mod(int128 lhs, int128 rhs)
 		lhs = int128_neg(lhs);
 	}
 
-	// TODO: negative demonimator
+	if (int128_less(rhs, INT128_C(0))) {
+		result_negative = !result_negative;
+		rhs = int128_neg(rhs);
+	}
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
 	uint128 b = { .low = rhs.low, .high = rhs.high };
