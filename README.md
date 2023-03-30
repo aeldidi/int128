@@ -1,4 +1,4 @@
-128 Bit Integer Library For C
+128-Bit Integer Library For C
 =============================
 
 Simply include `int128.h` to use `int128` or `uint128`. Each operation on these

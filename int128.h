@@ -284,9 +284,15 @@ static inline int128 int128_shiftr(int128 lhs, int rhs)
 		return (int128){ .low = result.low, .high = result.high };
 	}
 
-	if (rhs >= 64) {
+	if (rhs > 64) {
 		return (int128){
-			.low = (lhs.high >> (rhs - 64)) | (UINT64_C(~0) << rhs),
+			.low = (lhs.high >> (rhs - 64)) |
+			       (UINT64_C(~0) << (64 - (rhs - 64))),
+			.high = UINT64_C(~0),
+		};
+	} else if (rhs == 64) {
+		return (int128){
+			.low = lhs.high,
 			.high = UINT64_C(~0),
 		};
 	}
@@ -491,7 +497,7 @@ static inline uint128 uint128_div(uint128 lhs, uint128 rhs)
 }
 
 // Returns lhs % rhs.
-static inline uint128 uint128_mod(uint128 lhs, uint128 rhs)
+static inline uint128 uint128_rem(uint128 lhs, uint128 rhs)
 {
 	// Based on the algorithm described here:
 	// https://stackoverflow.com/questions/5386377/division-without-using
@@ -531,6 +537,10 @@ static inline uint128 uint128_mod(uint128 lhs, uint128 rhs)
 static inline int128 int128_div(int128 lhs, int128 rhs)
 {
 	// signed integers aren't symmetric. INT128_MIN == (-INT128_MAX) - 1
+	if (int128_eq(lhs, rhs) && int128_eq(lhs, INT128_MIN)) {
+		return INT128_C(1);
+	}
+
 	if (int128_eq(lhs, INT128_MIN)) {
 		return INT128_C(0);
 	}
@@ -559,30 +569,33 @@ static inline int128 int128_div(int128 lhs, int128 rhs)
 }
 
 // Returns lhs % rhs.
-static inline int128 int128_mod(int128 lhs, int128 rhs)
+static inline int128 int128_rem(int128 lhs, int128 rhs)
 {
 	// signed integers aren't symmetric. INT128_MIN == (-INT128_MAX) - 1
 	if (int128_eq(lhs, INT128_MIN)) {
 		return INT128_C(0);
 	}
 
+	if (int128_eq(rhs, INT128_MIN)) {
+		return lhs;
+	}
+
 	bool result_negative = false;
 	if (int128_less(lhs, INT128_C(0))) {
-		result_negative = !result_negative;
+		result_negative = true;
 		lhs = int128_neg(lhs);
 	}
 
 	if (int128_less(rhs, INT128_C(0))) {
-		result_negative = !result_negative;
 		rhs = int128_neg(rhs);
 	}
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
 	uint128 b = { .low = rhs.low, .high = rhs.high };
-	uint128 c = uint128_mod(a, b);
+	uint128 c = uint128_rem(a, b);
 	int128 result = { .low = c.low, .high = c.high };
 
-	if (result_negative) {
+	if (result_negative && int128_greater(result, INT128_C(0))) {
 		return int128_neg(result);
 	}
 

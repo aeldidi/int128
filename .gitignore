@@ -3,3 +3,8 @@ test.o
 test.exe
 test.obj
 test
+coverage-html
+*.gcov
+*.gcda
+*.gcno
+coverage.info
