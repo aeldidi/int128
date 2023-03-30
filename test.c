@@ -56,10 +56,10 @@ void int128_tests()
 	assert(int128_eq(b, INT128_C(0)));
 
 	// Multiplication wraparound check
-	// We will try to compute INT128_MAX * 10 and check if it wrapped
-	// around to -10.
-	b = int128_mul(INT128_MAX, INT128_C(10));
-	assert(int128_eq(b, INT128_C(-10)));
+	// We will try to compute INT128_MAX * -10 and check if it wrapped
+	// around to 10.
+	b = int128_mul(INT128_MAX, INT128_C(-10));
+	assert(int128_eq(b, INT128_C(10)));
 
 	// Fun fact: INT128_MAX (170141183460469231731687303715884105727) is
 	// prime :)

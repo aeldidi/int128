@@ -427,14 +427,13 @@ static inline int128 int128_mul(int128 lhs, int128 rhs)
 	bool result_negative = false;
 	if (int128_less(lhs, INT128_C(0))) {
 		result_negative = !result_negative;
+		lhs = int128_neg(lhs);
 	}
 
 	if (int128_less(rhs, INT128_C(0))) {
 		result_negative = !result_negative;
+		rhs = int128_neg(rhs);
 	}
-
-	lhs = int128_neg(lhs);
-	rhs = int128_neg(rhs);
 
 	uint128 a = { .low = lhs.low, .high = lhs.high };
 	uint128 b = { .low = rhs.low, .high = rhs.high };
